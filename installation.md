@@ -1,274 +1,144 @@
 ---
 title: Vite
-description: Install and configure shadcn/ui for Vite.
+description: Adding dark mode to your vite app.
 ---
 
-<Steps>
+## Create a theme provider
 
-### Create project
+```tsx title="components/theme-provider.tsx" showLineNumbers
+import { createContext, useContext, useEffect, useState } from "react"
 
-Start by creating a new React project using `vite`. Select the **React + TypeScript** template:
+type Theme = "dark" | "light" | "system"
 
-```bash
-npm create vite@latest
-```
+type ThemeProviderProps = {
+  children: React.ReactNode
+  defaultTheme?: Theme
+  storageKey?: string
+}
 
-### Add Tailwind CSS
+type ThemeProviderState = {
+  theme: Theme
+  setTheme: (theme: Theme) => void
+}
 
-```bash
-npm install tailwindcss @tailwindcss/vite
-```
+const initialState: ThemeProviderState = {
+  theme: "system",
+  setTheme: () => null,
+}
 
-Replace everything in `src/index.css` with the following:
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
-```css title="src/index.css"
-@import "tailwindcss";
-```
+export function ThemeProvider({
+  children,
+  defaultTheme = "system",
+  storageKey = "vite-ui-theme",
+  ...props
+}: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+  )
 
-### Edit tsconfig.json file
+  useEffect(() => {
+    const root = window.document.documentElement
 
-The current version of Vite splits TypeScript configuration into three files, two of which need to be edited.
-Add the `baseUrl` and `paths` properties to the `compilerOptions` section of the `tsconfig.json` and
-`tsconfig.app.json` files:
+    root.classList.remove("light", "dark")
 
-```ts title="tsconfig.json" {11-16} showLineNumbers
-{
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light"
+
+      root.classList.add(systemTheme)
+      return
+    }
+
+    root.classList.add(theme)
+  }, [theme])
+
+  const value = {
+    theme,
+    setTheme: (theme: Theme) => {
+      localStorage.setItem(storageKey, theme)
+      setTheme(theme)
     },
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
   }
+
+  return (
+    <ThemeProviderContext.Provider {...props} value={value}>
+      {children}
+    </ThemeProviderContext.Provider>
+  )
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext)
+
+  if (context === undefined)
+    throw new Error("useTheme must be used within a ThemeProvider")
+
+  return context
 }
 ```
 
-### Edit tsconfig.app.json file
+## Wrap your root layout
 
-Add the following code to the `tsconfig.app.json` file to resolve paths, for your IDE:
+Add the `ThemeProvider` to your root layout.
 
-```ts title="tsconfig.app.json" {4-9} showLineNumbers
-{
-  "compilerOptions": {
-    // ...
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
-    // ...
-  }
-}
-```
-
-### Update vite.config.ts
-
-Add the following code to the vite.config.ts so your app can resolve paths without error:
-
-```bash
-npm install -D @types/node
-```
-
-```typescript title="vite.config.ts" showLineNumbers {1,2,8-13}
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-})
-```
-
-### Run the CLI
-
-Run the `shadcn` init command to setup your project:
-
-```bash
-npx shadcn@latest init
-```
-
-You will be asked a few questions to configure `components.json`.
-
-```txt
-Which color would you like to use as base color? › Neutral
-```
-
-### Add Components
-
-You can now start adding components to your project.
-
-```bash
-npx shadcn@latest add button
-```
-
-The command above will add the `Button` component to your project. You can then import it like this:
-
-```tsx showLineNumbers title="src/App.tsx"
-import { Button } from "@/components/ui/button"
+```tsx {1,5-7} title="App.tsx" showLineNumbers
+import { ThemeProvider } from "@/components/theme-provider"
 
 function App() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center">
-      <Button>Click me</Button>
-    </div>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      {children}
+    </ThemeProvider>
   )
 }
 
 export default App
 ```
 
-</Steps>
+## Add a mode toggle
 
+Place a mode toggle on your site to toggle between light and dark mode.
 
----
-title: Vite
-description: Install and configure shadcn/ui for Vite.
----
+```tsx title="components/mode-toggle.tsx" showLineNumbers
+import { Moon, Sun } from "lucide-react"
 
-<Steps>
-
-### Create project
-
-Start by creating a new React project using `vite`. Select the **React + TypeScript** template:
-
-```bash
-npm create vite@latest
-```
-
-### Add Tailwind CSS
-
-```bash
-npm install tailwindcss @tailwindcss/vite
-```
-
-Replace everything in `src/index.css` with the following:
-
-```css title="src/index.css"
-@import "tailwindcss";
-```
-
-### Edit tsconfig.json file
-
-The current version of Vite splits TypeScript configuration into three files, two of which need to be edited.
-Add the `baseUrl` and `paths` properties to the `compilerOptions` section of the `tsconfig.json` and
-`tsconfig.app.json` files:
-
-```ts title="tsconfig.json" {11-16} showLineNumbers
-{
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
-}
-```
-
-### Edit tsconfig.app.json file
-
-Add the following code to the `tsconfig.app.json` file to resolve paths, for your IDE:
-
-```ts title="tsconfig.app.json" {4-9} showLineNumbers
-{
-  "compilerOptions": {
-    // ...
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
-    // ...
-  }
-}
-```
-
-### Update vite.config.ts
-
-Add the following code to the vite.config.ts so your app can resolve paths without error:
-
-```bash
-npm install -D @types/node
-```
-
-```typescript title="vite.config.ts" showLineNumbers {1,2,8-13}
-import path from "path"
-import tailwindcss from "@tailwindcss/vite"
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-})
-```
-
-### Run the CLI
-
-Run the `shadcn` init command to setup your project:
-
-```bash
-npx shadcn@latest init
-```
-
-You will be asked a few questions to configure `components.json`.
-
-```txt
-Which color would you like to use as base color? › Neutral
-```
-
-### Add Components
-
-You can now start adding components to your project.
-
-```bash
-npx shadcn@latest add button
-```
-
-The command above will add the `Button` component to your project. You can then import it like this:
-
-```tsx showLineNumbers title="src/App.tsx"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useTheme } from "@/components/theme-provider"
 
-function App() {
+export function ModeToggle() {
+  const { setTheme } = useTheme()
+
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center">
-      <Button>Click me</Button>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon">
+          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => setTheme("light")}>
+          Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
+          Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("system")}>
+          System
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
-
-export default App
 ```
-
-</Steps>
